@@ -21,7 +21,7 @@ function pioneerAvrAccessory(log, config) {
     this.name = config.name;
     this.host = config.host;
     this.port = config.port;
-    this.model = config.model || "VSX-922";
+    this.model = config.model || "VSX-1120K";
     this.prefsDir = config.prefsDir || ppath('pioneerAvr/');
 
     log.debug('Preferences directory : %s', this.prefsDir);
@@ -51,12 +51,11 @@ function pioneerAvrAccessory(log, config) {
 
     this.prepareInformationService();
     this.prepareTvService();
-    this.prepareTvSpeakerService();
     this.prepareInputSourceService();
 }
 
 pioneerAvrAccessory.prototype.prepareInformationService = function() {
-    // Set accessory informations
+    // Set accessory information
     this.informationService = new Service.AccessoryInformation();
     this.informationService
         .setCharacteristic(Characteristic.Manufacturer, this.manufacturer)
@@ -89,37 +88,7 @@ pioneerAvrAccessory.prototype.prepareTvService = function () {
         .on('get', this.getActiveIdentifier.bind(this))
         .on('set', this.setActiveIdentifier.bind(this));
 
-    // Remote Key
-    this.tvService
-        .getCharacteristic(Characteristic.RemoteKey)
-        .on('set', this.remoteKeyPress.bind(this));
-
     this.enabledServices.push(this.tvService);
-};
-
-pioneerAvrAccessory.prototype.prepareTvSpeakerService = function () {
-    // Create Service.TelevisionSpeaker and  associate to tvService
-    this.tvSpeakerService = new Service.TelevisionSpeaker(this.name + ' Volume', 'tvSpeakerService');
-    this.tvSpeakerService
-        .setCharacteristic(Characteristic.Active, Characteristic.Active.ACTIVE)
-        .setCharacteristic(Characteristic.VolumeControlType, Characteristic.VolumeControlType.ABSOLUTE);
-    this.tvSpeakerService
-        .getCharacteristic(Characteristic.VolumeSelector)
-        .on('set', (state, callback) => {
-            this.log.debug('Volume change over the remote control (VolumeSelector), pressed: %s', state === 1 ? 'Down' : 'Up');
-            this.setVolumeSwitch(state, callback, !state);
-        });
-    this.tvSpeakerService
-        .getCharacteristic(Characteristic.Mute)
-        .on('get', this.getMuted.bind(this))
-        .on('set', this.setMuted.bind(this));
-    this.tvSpeakerService
-        .addCharacteristic(Characteristic.Volume)
-        .on('get', this.getVolume.bind(this))
-        .on('set', this.setVolume.bind(this));
-
-    this.tvService.addLinkedService(this.tvSpeakerService);
-    this.enabledServices.push(this.tvSpeakerService);
 };
 
 pioneerAvrAccessory.prototype.prepareInputSourceService = function () {
@@ -129,7 +98,7 @@ pioneerAvrAccessory.prototype.prepareInputSourceService = function () {
 };
 
 pioneerAvrAccessory.prototype.addInputSourceService = function(key) {
-    // Create an inout service from the informations in avr.inputs
+    // Create an input service from the information in avr.inputs
     const me = this;
 
     this.log.info('Add input n°%s - Name: %s Id: %s Type: %s',
@@ -169,7 +138,7 @@ pioneerAvrAccessory.prototype.addInputSourceService = function(key) {
         });
     tmpInput
         .getCharacteristic(Characteristic.ConfiguredName)
-        .on('set', (name, callback) => { // Rename inout
+        .on('set', (name, callback) => { // Rename input
             me.log.info('Rename input %s to %s', me.avr.inputs[key].name, name);
             me.avr.inputs[key].name = name.substring(0,14);
             me.avr.renameInput(me.avr.inputs[key].id, name);
@@ -202,7 +171,7 @@ pioneerAvrAccessory.prototype.setPowerOn = function (on, callback) {
 };
 
 pioneerAvrAccessory.prototype.getActiveIdentifier = function (callback) {
-    // Update current unput
+    // Update current input
     this.log.info('Get input status');
     this.avr.inputStatus(callback);
 };
@@ -215,104 +184,9 @@ pioneerAvrAccessory.prototype.setActiveIdentifier = function(newValue, callback)
     callback();
 };
 
-// Callbacks for TelevisionSpeaker service
-pioneerAvrAccessory.prototype.setVolumeSwitch = function(state, callback, isUp) {
-    // Manage volume buttons in remote control center
-    if (isUp) {
-        this.log.info('Volume up');
-        this.avr.volumeUp();
-    } else {
-        this.log.info('Volume down');
-        this.avr.volumeDown();
-    }
-
-    callback();
-};
-
-pioneerAvrAccessory.prototype.getMuted = function (callback) {
-    // Get mute status
-    this.log.info('Get mute status');
-    this.avr.muteStatus(callback);
-};
-
-pioneerAvrAccessory.prototype.setMuted = function (mute, callback) {
-    // Set mute on/off
-    if (mute) {
-        this.log.info('Mute on');
-        this.avr.muteOn();
-    } else {
-        this.log.info('Mute off');
-        this.avr.muteOff();
-    }
-
-    callback();
-};
-
-pioneerAvrAccessory.prototype.getVolume = function (callback) {
-    // Get volume status
-    this.log.info('Get volume status');
-    this.volumeStatus(callback);
-};
-
-pioneerAvrAccessory.prototype.setVolume = function (volume, callback) {
-    // Set volume status
-    this.log.info('Set volume to %s', volume);
-    this.avr.setVolume(volume, callback);
-};
-
-// Callback for Remote key
-pioneerAvrAccessory.prototype.remoteKeyPress = function(remoteKey, callback) {
-    this.log.info('Remote key pressed : %s', remoteKey);
-    switch (remoteKey) {
-        case Characteristic.RemoteKey.REWIND:
-            this.log.info('Rewind remote key not implemented');
-            break;
-        case Characteristic.RemoteKey.FAST_FORWARD:
-            this.log.info('Fast forward remote key not implemented');
-            break;
-        case Characteristic.RemoteKey.NEXT_TRACK:
-            this.log.info('Next track remote key not implemented');
-            callback();
-            break;
-        case Characteristic.RemoteKey.PREVIOUS_TRACK:
-            this.log.info('Previous track remote key not implemented');
-            callback();
-            break;
-        case Characteristic.RemoteKey.ARROW_UP:
-            this.avr.remoteKey('UP');
-            break;
-        case Characteristic.RemoteKey.ARROW_DOWN:
-            this.avr.remoteKey('DOWN');
-            break;
-        case Characteristic.RemoteKey.ARROW_LEFT:
-            this.avr.remoteKey('LEFT');
-            break;
-        case Characteristic.RemoteKey.ARROW_RIGHT:
-            this.avr.remoteKey('RIGHT');
-            break;
-        case Characteristic.RemoteKey.SELECT:
-            this.avr.remoteKey('ENTER');
-            break;
-        case Characteristic.RemoteKey.BACK:
-            this.avr.remoteKey('RETURN');
-            break;
-        case Characteristic.RemoteKey.EXIT:
-            this.avr.remoteKey('RETURN');
-            break;
-        case Characteristic.RemoteKey.PLAY_PAUSE:
-            this.log.info('Play/Pause remote key not implemented');
-            break;
-        case Characteristic.RemoteKey.INFORMATION:
-            this.avr.remoteKey('HOME_MENU');
-            break;
-    }
-    callback();
-};
-
-
 pioneerAvrAccessory.prototype.getServices = function() {
     // This method is called once on startup. We need to wait for accessory to be ready
-    // ie all inputs are created
+    // i.e., all inputs are created
     while (this.avr.isReady == false) {
         require('deasync').sleep(500);
         this.log.debug('Waiting for pioneerAvrAccessory to be ready');
