@@ -5,43 +5,11 @@
 const request = require('request');
 const TelnetAvr = require('./telnet-avr');
 
-// Reference fot input id -> Characteristic.InputSourceType
+// Reference for input id -> Characteristic.InputSourceType
 const inputToType = {
-        '00': 0, // PHONO -> Characteristic.InputSourceType.OTHER
-        '01': 0, // CD -> Characteristic.InputSourceType.OTHER
-        '02': 2, // TUNER -> Characteristic.InputSourceType.TUNER
-        '03': 0, // TAPE -> Characteristic.InputSourceType.OTHER
-        '04': 0, // DVD -> Characteristic.InputSourceType.OTHER
-        '05': 3, // TV -> Characteristic.InputSourceType.HDMI
-        '06': 3, // CBL/SAT -> Characteristic.InputSourceType.HDMI
-        '10': 4, // VIDEO -> Characteristic.InputSourceType.COMPOSITE_VIDEO
-        '12': 0, // MULTI CH IN -> Characteristic.InputSourceType.OTHER
-        '13': 0, // USB-DAC -> Characteristic.InputSourceType.OTHER
-        '14': 6, // VIDEOS2 -> Characteristic.InputSourceType.COMPONENT_VIDEO
-        '15': 3, // DVR/BDR -> Characteristic.InputSourceType.HDMI
-        '17': 9, // USB/iPod -> Characteristic.InputSourceType.USB
-        '18': 2, // XM RADIO -> Characteristic.InputSourceType.TUNER
-        '19': 3, // HDMI1 -> Characteristic.InputSourceType.HDMI
-        '20': 3, // HDMI2 -> Characteristic.InputSourceType.HDMI
-        '21': 3, // HDMI3 -> Characteristic.InputSourceType.HDMI
         '22': 3, // HDMI4 -> Characteristic.InputSourceType.HDMI
-        '23': 3, // HDMI5 -> Characteristic.InputSourceType.HDMI
-        '24': 3, // HDMI6 -> Characteristic.InputSourceType.HDMI
         '25': 3, // BD -> Characteristic.InputSourceType.HDMI
-        '26': 10, // MEDIA GALLERY -> Characteristic.InputSourceType.APPLICATION
-        '27': 0, // SIRIUS -> Characteristic.InputSourceType.OTHER
-        '31': 3, // HDMI CYCLE -> Characteristic.InputSourceType.HDMI
-        '33': 0, // ADAPTER -> Characteristic.InputSourceType.OTHER
-        '34': 3, // HDMI7-> Characteristic.InputSourceType.HDMI
-        '35': 3, // HDMI8-> Characteristic.InputSourceType.HDMI
-        '38': 2, // NETRADIO -> Characteristic.InputSourceType.TUNER
-        '40': 0, // SIRIUS -> Characteristic.InputSourceType.OTHER
-        '41': 0, // PANDORA -> Characteristic.InputSourceType.OTHER
-        '44': 0, // MEDIA SERVER -> Characteristic.InputSourceType.OTHER
-        '45': 0, // FAVORITE -> Characteristic.InputSourceType.OTHER
-        '48': 0, // MHL -> Characteristic.InputSourceType.OTHER
-        '49': 0, // GAME -> Characteristic.InputSourceType.OTHER
-        '57': 0 // SPOTIFY -> Characteristic.InputSourceType.OTHER
+        '26': 10, // NET RADIO -> Characteristic.InputSourceType.APPLICATION
 };
 
 function PioneerAvr(log, host, port) {
@@ -124,75 +92,6 @@ PioneerAvr.prototype.powerOff = function() {
     }
 };
 
-// Volume methods
-
-PioneerAvr.prototype.__updateVolume = function(callback) {
-    this.sendCommand('?V', callback);
-};
-
-PioneerAvr.prototype.volumeStatus = function(callback) {
-    this.__updateVolume(() => {
-        callback(null, this.state.volume);
-    });
-};
-
-PioneerAvr.prototype.setVolume = function(targetVolume, callback) {
-    var vsxVol = targetVolume * 185 / 100;
-    vsxVol = Math.floor(vsxVol);
-    var pad = "000";
-    var vsxVolStr = pad.substring(0, pad.length - vsxVol.toString().length) + vsxVol.toString();
-    this.sendCommand(`${vsxVolStr}VL\r\n`);
-    callback();
-};
-
-PioneerAvr.prototype.volumeUp = function() {
-    this.log.debug('Volume up');
-    if (this.web) {
-        request.get(this.webEventHandlerBaseUrl + 'VU');
-    } else {
-        this.sendCommand('VU');
-    }
-};
-
-PioneerAvr.prototype.volumeDown = function() {
-    this.log.debug('Volume down');
-    if (this.web) {
-        request.get(this.webEventHandlerBaseUrl + 'VD');
-    } else {
-        this.sendCommand('VD');
-    }
-};
-
-// Mute methods
-
-PioneerAvr.prototype.__updateMute = function(callback) {
-    this.sendCommand('?M', callback);
-};
-
-PioneerAvr.prototype.muteStatus = function(callback) {
-    this.__updateMute(() => {
-        callback(null, this.state.muted);
-    });
-};
-
-PioneerAvr.prototype.muteOn = function() {
-    this.log.debug('Mute on');
-    if (this.web) {
-        request.get(this.webEventHandlerBaseUrl + 'MO');
-    } else {
-        this.sendCommand('MO');
-    }
-};
-
-PioneerAvr.prototype.muteOff = function() {
-    this.log.debug('Mute off');
-    if (this.web) {
-        request.get(this.webEventHandlerBaseUrl + 'MF');
-    } else {
-        this.sendCommand('MF');
-    }
-};
-
 // Input management method
 
 PioneerAvr.prototype.__updateInput = function(callback) {
@@ -218,37 +117,6 @@ PioneerAvr.prototype.renameInput = function (id, newName) {
     this.sendCommand(`${shrinkName}1RGB${id}`);
 };
 
-// Remote Key methods
-
-PioneerAvr.prototype.remoteKey = function (rk) {
-    // Implemented key from CURSOR OPERATION
-    switch (rk) {
-        case 'UP':
-            this.sendCommand('CUP');
-            break;
-        case 'DOWN':
-            this.sendCommand('CDN');
-            break;
-        case 'LEFT':
-            this.sendCommand('CLE');
-            break;
-        case 'RIGHT':
-            this.sendCommand('CRI');
-            break;
-        case 'ENTER':
-            this.sendCommand('CEN');
-            break;
-        case 'RETURN':
-            this.sendCommand('CRT');
-            break;
-        case 'HOME_MENU':
-            this.sendCommand('HM');
-            break;
-        default:
-            this.log.info('Unhandled remote key : %s', rk);
-    }
-};
-
 // Send command and process return
 
 PioneerAvr.prototype.sendCommand = async function(command, callback) {
@@ -265,22 +133,6 @@ PioneerAvr.prototype.sendCommand = async function(command, callback) {
     if (data.startsWith('PWR')) {
         this.log.debug('Receive Power status : %s', data);
         this.state.on = parseInt(data[3], 10) === 0;
-        callback();
-    }
-
-    // Data returned for mute status
-    if (data.startsWith('MUT')) {
-        this.log.debug('Receive Mute status : %s', data);
-        this.state.muted = parseInt(data[3], 10) === 0;
-        callback();
-    }
-
-    // Data returned for volume status
-    if (data.startsWith('VOL')) {
-        var vol = data.substring(3);
-        var volPctF = Math.floor(parseInt(vol) * 100 / 185);
-        this.state.volume = Math.floor(volPctF);
-        this.log.debug("Volume is %s (%s%)", vol, this.state.volume);
         callback();
     }
 
@@ -320,7 +172,7 @@ PioneerAvr.prototype.sendCommand = async function(command, callback) {
         callback(this.inputs.length-1);
     }
 
-    // E06 is returned when input not exists
+    // E06 is returned when input does not exist
     if (data.startsWith('E06')) {
         this.log.debug('Receive E06 error');
         if (!this.isReady) {
